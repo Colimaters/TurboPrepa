@@ -1,0 +1,22 @@
+:root {
+    --ink: #2c3956;
+    --muted: #71809c;
+    --paper: #f8f9fd;
+    --line: #e7eaf2;
+    --lavender: #bdb6e6;
+    --sage: #9bcdb2;
+    --peach: #efc29c;
+    --slate: #aab6cd;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); color: var(--ink); }
+
+body {
+    margin: 0;
+    min-width: 320px;
+    font-family: "Avenir Next", Avenir, "Nunito", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button { font: inherit; }
