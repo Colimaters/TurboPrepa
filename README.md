@@ -14,6 +14,10 @@ Une fenêtre TurboPrepa s'ouvre avec une page de confirmation. Le bouton « Vér
 
 ## Construire l'application macOS
 
+À exécuter depuis un Mac : Wails ne prend pas en charge la compilation croisée vers macOS.
+
 ```bash
-wails build
+wails build -clean -o TurboPrepa
 ```
+
+Le bundle de test est généré dans `build/bin/TurboPrepa.app`.
