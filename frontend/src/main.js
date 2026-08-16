@@ -70,15 +70,18 @@ document.querySelector('#app').innerHTML = `
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long', day: 'numeric', month: 'long',
 });
+let currentDashboardDate = null;
 
-function showUnavailable(section) {
+function navigateTo(section, date = null) {
+  const targetDate = date || (section === 'Planning' ? currentDashboardDate : null);
+  window.dispatchEvent(new CustomEvent('turboprepa:navigate', { detail: { section, date: targetDate } }));
   const error = document.querySelector('#load-error');
   error.hidden = false;
   error.textContent = `${section} sera disponible dans une prochaine étape.`;
 }
 
-document.querySelector('#progress-link').addEventListener('click', () => showUnavailable('Matières'));
-document.querySelector('#planning-link').addEventListener('click', () => showUnavailable('Planning'));
+document.querySelector('#progress-link').addEventListener('click', () => navigateTo('Matières'));
+document.querySelector('#planning-link').addEventListener('click', () => navigateTo('Planning'));
 
 function renderProgress(progress) {
   const total = statuses.reduce((sum, status) => sum + progress[status.key], 0);
@@ -96,6 +99,16 @@ function renderProgress(progress) {
     : 'Ajoutez vos chapitres dans Matières pour suivre votre progression.';
 }
 
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+}
+
+function displayColor(color) {
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : '#D4D4D4';
+}
+
 function renderTasks(tasks) {
   const taskList = document.querySelector('#tasks');
   if (!tasks.length) {
@@ -105,37 +118,44 @@ function renderTasks(tasks) {
         <div><h3>Aucune tâche prévue aujourd'hui</h3><p>Profitez-en pour planifier une séance à votre rythme.</p></div>
         <button id="empty-planning-link" class="primary-action" type="button">Planifier ma journée</button>
       </div>`;
-    document.querySelector('#empty-planning-link').addEventListener('click', () => showUnavailable('Planning'));
+    document.querySelector('#empty-planning-link').addEventListener('click', () => navigateTo('Planning'));
     return;
   }
   taskList.innerHTML = tasks.map((task) => `
-    <button class="task-row ${task.completed ? 'done' : ''}" type="button" data-task-id="${task.id}" aria-pressed="${task.completed}">
-      <span class="checkmark" aria-hidden="true">${task.completed ? '✓' : ''}</span>
-      <span class="task-color" style="background:${task.color}"></span>
-      <span class="task-copy"><strong>${task.title}</strong><span>${task.subject}</span></span>
-      <time>${task.startTime} – ${task.endTime}</time>
-    </button>
+    <div class="task-row ${task.completed ? 'done' : ''}" data-task-id="${task.id}">
+      <button class="task-toggle checkmark" type="button" aria-label="${task.completed ? 'Marquer comme non terminée' : 'Marquer comme terminée'}" aria-pressed="${task.completed}">${task.completed ? '✓' : ''}</button>
+      <span class="task-color" style="background:${displayColor(task.color)}"></span>
+      <button class="task-details" type="button" aria-label="Voir cette tâche dans le planning">
+        <span class="task-copy"><strong>${escapeHTML(task.title)}</strong><span>${escapeHTML(task.subject)}</span></span>
+        <time>${escapeHTML(task.startTime)} – ${escapeHTML(task.endTime)}</time>
+      </button>
+    </div>
   `).join('');
-  taskList.querySelectorAll('.task-row').forEach((taskButton) => {
-    taskButton.addEventListener('click', async () => {
-      const completed = taskButton.getAttribute('aria-pressed') !== 'true';
-      taskButton.disabled = true;
+  taskList.querySelectorAll('.task-toggle').forEach((taskToggle) => {
+    taskToggle.addEventListener('click', async () => {
+      const taskRow = taskToggle.closest('.task-row');
+      const completed = taskToggle.getAttribute('aria-pressed') !== 'true';
+      taskToggle.disabled = true;
       try {
-        await ToggleTodayTask(Number(taskButton.dataset.taskId), completed);
+        await ToggleTodayTask(Number(taskRow.dataset.taskId), completed);
         await loadDashboard();
       } catch (error) {
         document.querySelector('#load-error').hidden = false;
         document.querySelector('#load-error').textContent = `Impossible de mettre à jour la tâche : ${error}`;
       } finally {
-        taskButton.disabled = false;
+        taskToggle.disabled = false;
       }
     });
+  });
+  taskList.querySelectorAll('.task-details').forEach((taskDetails) => {
+    taskDetails.addEventListener('click', () => navigateTo('Planning'));
   });
 }
 
 async function loadDashboard() {
   try {
     const dashboard = await GetDashboard();
+    currentDashboardDate = dashboard.today;
     const date = new Date(`${dashboard.today}T12:00:00`);
     document.querySelector('#date-label').textContent = dateFormatter.format(date);
     document.querySelector('#quote-text').textContent = `« ${dashboard.quote.text} »`;

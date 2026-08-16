@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,8 +15,11 @@ import (
 )
 
 type App struct {
-	ctx context.Context
-	db  *sql.DB
+	ctx     context.Context
+	db      *sql.DB
+	dataDir string
+	now     func() time.Time
+	quotes  []Quote
 }
 
 type Quote struct {
@@ -48,38 +53,8 @@ type Dashboard struct {
 	Today    string      `json:"today"`
 }
 
-var quotes = []Quote{
-	{Text: "Le succès, c'est d'aller d'échec en échec sans perdre son enthousiasme.", Author: "Winston Churchill"},
-	{Text: "La liberté est le droit de faire tout ce que les lois permettent.", Author: "Montesquieu", Source: "De l'esprit des lois"},
-	{Text: "La justice sans la force est impuissante ; la force sans la justice est tyrannique.", Author: "Blaise Pascal", Source: "Pensées"},
-	{Text: "Ce n'est pas parce que les choses sont difficiles que nous n'osons pas, c'est parce que nous n'osons pas qu'elles sont difficiles.", Author: "Sénèque", Source: "Lettres à Lucilius"},
-	{Text: "Il n'est point de bonheur sans liberté, ni de liberté sans courage.", Author: "Périclès", UncertainAttribution: true},
-	{Text: "La victoire appartient au plus opiniâtre.", Author: "Roland Garros"},
-	{Text: "Le courage n'est pas l'absence de peur, mais la capacité de la vaincre.", Author: "Nelson Mandela", UncertainAttribution: true},
-	{Text: "L'instruction est le premier besoin d'un peuple libre.", Author: "Napoléon Bonaparte", UncertainAttribution: true},
-	{Text: "La discipline est la force principale des armées.", Author: "George Washington", UncertainAttribution: true},
-	{Text: "Il faut cultiver notre jardin.", Author: "Voltaire", Source: "Candide"},
-	{Text: "À vaincre sans péril, on triomphe sans gloire.", Author: "Pierre Corneille", Source: "Le Cid"},
-	{Text: "La patience est amère, mais son fruit est doux.", Author: "Jean-Jacques Rousseau", UncertainAttribution: true},
-	{Text: "Le bonheur est dans la liberté, et la liberté dans le courage.", Author: "Périclès", UncertainAttribution: true},
-	{Text: "La connaissance s'acquiert par l'expérience, tout le reste n'est que de l'information.", Author: "Albert Einstein", UncertainAttribution: true},
-	{Text: "Le droit est l'ensemble des conditions qui permettent à la liberté de chacun de s'accorder à la liberté de tous.", Author: "Emmanuel Kant", Source: "Doctrine du droit"},
-	{Text: "La grandeur d'un métier est peut-être, avant tout, d'unir des hommes.", Author: "Antoine de Saint-Exupéry", Source: "Terre des hommes"},
-	{Text: "La persévérance est la vertu par laquelle on poursuit le bien malgré les obstacles.", Author: "Thomas d'Aquin", UncertainAttribution: true},
-	{Text: "Fais de ta vie un rêve, et d'un rêve, une réalité.", Author: "Antoine de Saint-Exupéry", UncertainAttribution: true},
-	{Text: "Là où est la volonté, là est le chemin.", Author: "Proverbe anglais", Source: "Where there's a will, there's a way"},
-	{Text: "Le travail éloigne de nous trois grands maux : l'ennui, le vice et le besoin.", Author: "Voltaire", Source: "Candide"},
-	{Text: "La difficulté attire l'homme de caractère, car c'est en l'étreignant qu'il se réalise lui-même.", Author: "Charles de Gaulle", UncertainAttribution: true},
-	{Text: "Un homme n'est jamais si grand que lorsqu'il est à genoux pour aider un enfant.", Author: "Pythagore", UncertainAttribution: true},
-	{Text: "Il n'y a point de chemin trop long à qui marche lentement et sans se presser.", Author: "Jean de La Fontaine", Source: "Le Lièvre et la Tortue"},
-	{Text: "On ne peut rien fonder sur la faiblesse.", Author: "Charles de Gaulle", Source: "Mémoires de guerre"},
-	{Text: "La vraie générosité envers l'avenir consiste à tout donner au présent.", Author: "Albert Camus", Source: "L'Homme révolté"},
-	{Text: "Il faut avoir beaucoup étudié pour savoir peu.", Author: "Montesquieu", UncertainAttribution: true},
-	{Text: "La volonté de gagner ne signifie rien sans la volonté de se préparer.", Author: "Juma Ikangaa"},
-	{Text: "Il est plus facile de faire son devoir que de le connaître.", Author: "Alexandre Dumas", UncertainAttribution: true},
-	{Text: "Le succès n'est pas final, l'échec n'est pas fatal : c'est le courage de continuer qui compte.", Author: "Winston Churchill", UncertainAttribution: true},
-	{Text: "Pour la patrie, l'honneur et le droit.", Author: "Gendarmerie nationale", Source: "Devise institutionnelle"},
-}
+//go:embed assets/citations.json
+var quotesJSON []byte
 
 var defaultSubjects = []string{
 	"Droit pénal général", "Droit pénal spécial", "Procédure pénale", "Droit européen",
@@ -96,29 +71,36 @@ var pastelColors = []string{
 }
 
 func NewApp() *App {
-	return &App{}
+	return &App{now: time.Now}
 }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if err := a.loadQuotes(); err != nil {
+		panic(fmt.Sprintf("impossible de charger les citations : %v", err))
+	}
 	if err := a.openDatabase(); err != nil {
 		panic(fmt.Sprintf("impossible d'initialiser la base de données : %v", err))
 	}
 }
 
 func (a *App) openDatabase() error {
-	dataDir, err := applicationDataDirectory()
-	if err != nil {
-		return err
+	if a.dataDir == "" {
+		dataDir, err := applicationDataDirectory()
+		if err != nil {
+			return err
+		}
+		a.dataDir = dataDir
 	}
-	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+	if err := os.MkdirAll(a.dataDir, 0o755); err != nil {
 		return fmt.Errorf("création du répertoire de données : %w", err)
 	}
 
-	db, err := sql.Open("sqlite", filepath.Join(dataDir, "data.db"))
+	db, err := sql.Open("sqlite", filepath.Join(a.dataDir, "data.db"))
 	if err != nil {
 		return fmt.Errorf("ouverture de la base de données : %w", err)
 	}
+	db.SetMaxOpenConns(1)
 	if _, err = db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
 		db.Close()
 		return fmt.Errorf("activation des clés étrangères : %w", err)
@@ -143,8 +125,50 @@ func applicationDataDirectory() (string, error) {
 }
 
 func (a *App) migrate() error {
-	_, err := a.db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY);
+	if _, err := a.db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)`); err != nil {
+		return fmt.Errorf("création du suivi des migrations : %w", err)
+	}
+
+	for _, migration := range migrations {
+		var applied bool
+		if err := a.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = ?)`, migration.version).Scan(&applied); err != nil {
+			return fmt.Errorf("lecture des migrations : %w", err)
+		}
+		if applied {
+			continue
+		}
+
+		tx, err := a.db.Begin()
+		if err != nil {
+			return fmt.Errorf("démarrage de la migration %d : %w", migration.version, err)
+		}
+		if err := migration.apply(tx); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("migration %d : %w", migration.version, err)
+		}
+		if _, err := tx.Exec(`INSERT INTO schema_migrations(version) VALUES (?)`, migration.version); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("enregistrement de la migration %d : %w", migration.version, err)
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("validation de la migration %d : %w", migration.version, err)
+		}
+	}
+	return nil
+}
+
+type migration struct {
+	version int
+	apply   func(*sql.Tx) error
+}
+
+var migrations = []migration{
+	{version: 1, apply: migrateInitialSchema},
+	{version: 2, apply: migratePlanningTaskDetails},
+}
+
+func migrateInitialSchema(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
 		CREATE TABLE IF NOT EXISTS matieres (
 			id INTEGER PRIMARY KEY, nom TEXT NOT NULL, couleur TEXT NOT NULL, ordre INTEGER NOT NULL
 		);
@@ -159,17 +183,9 @@ func (a *App) migrate() error {
 			heure_debut TEXT NOT NULL, heure_fin TEXT NOT NULL, couleur TEXT, terminee INTEGER NOT NULL DEFAULT 0,
 			FOREIGN KEY (matiere_id) REFERENCES matieres(id) ON DELETE SET NULL
 		);
-		INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);
-	`)
-	if err != nil {
-		return fmt.Errorf("migration du schéma : %w", err)
-	}
-
-	tx, err := a.db.Begin()
-	if err != nil {
+	`); err != nil {
 		return err
 	}
-	defer tx.Rollback()
 	for index, subject := range defaultSubjects {
 		if _, err := tx.Exec(
 			`INSERT INTO matieres(nom, couleur, ordre)
@@ -179,16 +195,47 @@ func (a *App) migrate() error {
 			return fmt.Errorf("initialisation des matières : %w", err)
 		}
 	}
-	return tx.Commit()
+	return nil
+}
+
+func migratePlanningTaskDetails(tx *sql.Tx) error {
+	if _, err := tx.Exec(`
+		ALTER TABLE taches_planning ADD COLUMN chapitre_id INTEGER REFERENCES chapitres(id) ON DELETE SET NULL;
+		ALTER TABLE taches_planning ADD COLUMN notes TEXT NOT NULL DEFAULT '';
+	`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a *App) loadQuotes() error {
+	var quotes []Quote
+	if err := json.Unmarshal(quotesJSON, &quotes); err != nil {
+		return fmt.Errorf("lecture du JSON : %w", err)
+	}
+	if len(quotes) == 0 {
+		return fmt.Errorf("le stock est vide")
+	}
+	for index, quote := range quotes {
+		if quote.Text == "" || quote.Author == "" {
+			return fmt.Errorf("citation %d incomplète", index+1)
+		}
+	}
+	a.quotes = quotes
+	return nil
 }
 
 func (a *App) GetDashboard() (Dashboard, error) {
 	if a.db == nil {
 		return Dashboard{}, fmt.Errorf("la base de données n'est pas initialisée")
 	}
-	today := time.Now().Format("2006-01-02")
-	days := time.Now().Unix() / 86400
-	quote := quotes[int(days%int64(len(quotes)))]
+	if len(a.quotes) == 0 {
+		return Dashboard{}, fmt.Errorf("les citations ne sont pas initialisées")
+	}
+	now := a.now()
+	today := now.Format("2006-01-02")
+	days := civilDayIndex(now)
+	quote := a.quotes[int(days%int64(len(a.quotes)))]
 	dashboard := Dashboard{Quote: quote, Tasks: []TodayTask{}, Today: today}
 
 	rows, err := a.db.Query(`
@@ -251,7 +298,7 @@ func (a *App) ToggleTodayTask(taskID int64, completed bool) error {
 	}
 	result, err := a.db.Exec(
 		`UPDATE taches_planning SET terminee = ? WHERE id = ? AND date = ?`,
-		boolToInt(completed), taskID, time.Now().Format("2006-01-02"),
+		boolToInt(completed), taskID, a.now().Format("2006-01-02"),
 	)
 	if err != nil {
 		return fmt.Errorf("mise à jour de la tâche : %w", err)
@@ -264,6 +311,11 @@ func (a *App) ToggleTodayTask(taskID int64, completed bool) error {
 		return fmt.Errorf("tâche du jour introuvable")
 	}
 	return nil
+}
+
+func civilDayIndex(value time.Time) int64 {
+	year, month, day := value.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC).Unix() / 86400
 }
 
 func boolToInt(value bool) int {
