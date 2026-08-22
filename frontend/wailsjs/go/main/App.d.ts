@@ -9,6 +9,8 @@ export function CreateMatiere(arg1:string,arg2:string):Promise<application.Matie
 
 export function CreatePlanningTask(arg1:application.PlanningTaskInput):Promise<application.PlanningTask>;
 
+export function CreateQuizQuestion(arg1:application.QuizQuestionInput):Promise<application.QuizQuestion>;
+
 export function CreateSubjectWork(arg1:number,arg2:string,arg3:string):Promise<application.SubjectWork>;
 
 export function DeleteAttachment(arg1:number):Promise<void>;
@@ -19,15 +21,21 @@ export function DeleteMatiere(arg1:number):Promise<void>;
 
 export function DeletePlanningTask(arg1:number):Promise<void>;
 
+export function DeleteQuizQuestion(arg1:number):Promise<void>;
+
 export function DeleteSubjectWork(arg1:number):Promise<void>;
 
 export function DownloadPlanningTemplate():Promise<void>;
 
 export function GeneratePlanning(arg1:application.GeneratePlanningInput):Promise<Array<application.PlanningTask>>;
 
+export function GetDailyQuiz():Promise<application.DailyQuiz>;
+
 export function GetDashboard():Promise<application.Dashboard>;
 
 export function GetMatiereDetail(arg1:number):Promise<application.MatiereDetail>;
+
+export function GetQuizProgress():Promise<application.QuizProgress>;
 
 export function GetWorkdayPreferences():Promise<application.WorkdayPreferences>;
 
@@ -42,6 +50,8 @@ export function ListPastelColors():Promise<Array<string>>;
 export function ListPlanningData():Promise<application.PlanningData>;
 
 export function ListPlanningTasks(arg1:string,arg2:string):Promise<Array<application.PlanningTask>>;
+
+export function ListQuizQuestions():Promise<Array<application.QuizQuestion>>;
 
 export function MoveAttachment(arg1:number,arg2:number):Promise<void>;
 
@@ -63,8 +73,12 @@ export function SetSubjectWorkCompleted(arg1:number,arg2:boolean):Promise<void>;
 
 export function Startup(arg1:context.Context):Promise<void>;
 
+export function SubmitDailyQuiz(arg1:Array<number>,arg2:boolean):Promise<application.QuizResult>;
+
 export function ToggleTodayTask(arg1:number,arg2:boolean):Promise<void>;
 
 export function UpdateChapter(arg1:number,arg2:string,arg3:string):Promise<void>;
 
 export function UpdatePlanningTask(arg1:number,arg2:application.PlanningTaskInput):Promise<application.PlanningTask>;
+
+export function UpdateQuizQuestion(arg1:number,arg2:application.QuizQuestionInput):Promise<void>;

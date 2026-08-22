@@ -26,6 +26,7 @@ const ui = {
   planningTab: 'add', calendarView: 'month', calendarDate: '2026-08-01',
   planningSelection: new Map(), editingPlanningTask: null,
   planningImportStatus: null,
+  quizTimer: null,
 };
 
 function escapeHTML(value) {
@@ -77,7 +78,7 @@ function shell(content) {
         </button>
         <nav aria-label="Navigation principale">
           ${['Accueil', 'Matières', 'Planning', 'Annuaire', 'Jurisprudence', 'Veille juridique', 'Quiz du jour', 'Concours', 'Textes']
-    .map((page) => `<button class="nav-item ${ui.page === page ? 'active' : ''}" type="button" data-page="${page}" ${page !== 'Accueil' && page !== 'Matières' && page !== 'Planning' ? 'disabled' : ''}>${page}</button>`).join('')}
+    .map((page) => `<button class="nav-item ${ui.page === page ? 'active' : ''}" type="button" data-page="${page}" ${page !== 'Accueil' && page !== 'Matières' && page !== 'Planning' && page !== 'Quiz du jour' ? 'disabled' : ''}>${page}</button>`).join('')}
         </nav>
       </header>
       <p id="notice" class="notice" role="status" hidden></p>
@@ -97,6 +98,10 @@ async function render() {
   }
   if (ui.page === 'Planning') {
     await renderPlanning();
+    return;
+  }
+  if (ui.page === 'Quiz du jour') {
+    await renderQuiz();
     return;
   }
   await renderDashboard();
@@ -132,6 +137,112 @@ async function renderDashboard() {
   } catch (error) {
     shell(`<main class="dashboard"><p class="load-error">Impossible de charger l’accueil : ${escapeHTML(errorMessage(error))}</p></main>`);
   }
+}
+
+function formatQuizTime(seconds) {
+    return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  }
+
+function quizQuestionForm(question = null) {
+    const choices = question?.choices || ['', ''];
+    return `<form id="quiz-question-form" class="quiz-question-form">
+      <label>Question<input name="question" required maxlength="500" value="${escapeHTML(question?.question || '')}"></label>
+      <label>Thème<input name="theme" required maxlength="100" value="${escapeHTML(question?.theme || '')}" placeholder="Ex. Procédure pénale"></label>
+      <label>Choix, séparés par des virgules<input name="choices" required value="${escapeHTML(choices.join(', '))}" placeholder="Vrai, Faux"></label>
+      <label>Bonne réponse (numéro du choix)<input name="correctAnswer" type="number" min="1" required value="${question ? question.correctAnswer + 1 : 1}"></label>
+      <label>Explication <span class="optional">facultative</span><textarea name="explanation" rows="2">${escapeHTML(question?.explanation || '')}</textarea></label>
+      <button class="primary-action" type="submit">${question ? 'Enregistrer la question' : 'Ajouter la question'}</button>
+    </form>`;
+  }
+
+function quizCorrection(question, correction) {
+    const answer = correction.answer === -1 ? 'Sans réponse' : question.choices[correction.answer];
+    return `<article class="quiz-correction ${correction.correct ? 'correct' : 'incorrect'}"><strong>${escapeHTML(question.question)}</strong><p>Votre réponse : ${escapeHTML(answer || 'Sans réponse')} · Bonne réponse : ${escapeHTML(question.choices[correction.correctAnswer])}</p>${correction.explanation ? `<p>${escapeHTML(correction.explanation)}</p>` : ''}</article>`;
+  }
+
+async function renderQuiz() {
+    if (ui.quizTimer) {
+      window.clearInterval(ui.quizTimer);
+      ui.quizTimer = null;
+    }
+    shell('<main class="quiz-page"><p class="loading">Chargement du quiz…</p></main>');
+    try {
+      const [questions, progress, dailyResult] = await Promise.all([
+        api('ListQuizQuestions'),
+        api('GetQuizProgress'),
+        api('GetDailyQuiz').then((quiz) => ({ quiz })).catch((error) => ({ error })),
+      ]);
+      const daily = dailyResult.quiz;
+      const unavailable = dailyResult.error ? errorMessage(dailyResult.error) : '';
+      shell(`<main class="quiz-page">
+        <section class="page-heading"><div><p class="eyebrow">ENTRAÎNEMENT QUOTIDIEN</p><h1>Quiz du jour</h1><p class="date-label">Cinq questions, deux minutes, une correction immédiate.</p></div>
+          <div class="quiz-stats"><strong>${progress.streak}</strong><span>jour${progress.streak > 1 ? 's' : ''} de série</span><strong>${progress.totalScore}</strong><span>points</span></div></section>
+        <section class="quiz-layout">
+          <section class="card quiz-session">${daily ? renderQuizSession(daily) : `<div class="empty-state"><div><h3>Quiz indisponible</h3><p>${escapeHTML(unavailable)}</p></div></div>`}</section>
+          <aside class="card quiz-history"><p class="eyebrow">SUIVI PERSONNEL</p><h2>30 derniers jours</h2>${progress.history.length ? `<ul>${progress.history.map((entry) => `<li><span>${escapeHTML(entry.date)}</span><strong>${entry.score}/${entry.total}${entry.expired ? ' · temps écoulé' : ''}</strong></li>`).join('')}</ul>` : '<p class="empty-list">Aucun quiz terminé pour le moment.</p>'}</aside>
+        </section>
+        <section class="card quiz-library"><div class="panel-heading"><div><p class="eyebrow">BANQUE DE QUESTIONS</p><h2>Questions éditables</h2><p>${questions.length} question${questions.length > 1 ? 's' : ''} enregistrée${questions.length > 1 ? 's' : ''}. Ajoutez-en au moins cinq pour lancer une série.</p></div></div>
+          ${quizQuestionForm()}
+          <div class="quiz-library-list">${questions.map((question) => `<article><div><strong>${escapeHTML(question.question)}</strong><span>${escapeHTML(question.theme)} · réponse ${question.correctAnswer + 1}</span></div><div><button data-edit-quiz="${question.id}" type="button">Modifier</button><button data-delete-quiz="${question.id}" type="button">Supprimer</button></div></article>`).join('') || '<p class="empty-list">Ajoutez votre première question ci-dessus.</p>'}</div>
+        </section>
+      </main>`);
+      bindQuizActions(daily, questions);
+    } catch (error) {
+      shell(`<main class="quiz-page"><p class="load-error">Impossible de charger le quiz : ${escapeHTML(errorMessage(error))}</p></main>`);
+    }
+  }
+
+function renderQuizSession(daily) {
+    if (daily.completed) {
+      return `<div class="quiz-result"><p class="eyebrow">SÉRIE TERMINÉE</p><h2>${daily.result.score}/${daily.result.total}</h2><p>${daily.result.expired ? 'Le temps est écoulé : les réponses non données sont comptées comme incorrectes.' : 'Correction de votre série du jour.'}</p>${daily.questions.map((question, index) => quizCorrection(question, daily.result.corrections[index])).join('')}</div>`;
+    }
+    return `<div class="quiz-live"><header><div><p class="eyebrow">SÉRIE DU JOUR</p><h2>Répondez avant la fin du temps.</h2></div><time id="quiz-timer" class="quiz-timer">02:00</time></header>
+      <form id="daily-quiz-form">${daily.questions.map((question, index) => `<fieldset><legend>${index + 1}. ${escapeHTML(question.question)} <small>${escapeHTML(question.theme)}</small></legend>${question.choices.map((choice, choiceIndex) => `<label><input type="radio" name="quiz-${index}" value="${choiceIndex}"> ${escapeHTML(choice)}</label>`).join('')}</fieldset>`).join('')}<button class="primary-action" type="submit">Valider mes réponses</button></form></div>`;
+  }
+
+function bindQuizActions(daily, questions) {
+    const form = document.querySelector('#quiz-question-form');
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const choices = String(data.get('choices')).split(',').map((choice) => choice.trim()).filter(Boolean);
+      const input = { question: String(data.get('question')).trim(), theme: String(data.get('theme')).trim(), choices, correctAnswer: Number(data.get('correctAnswer')) - 1, explanation: String(data.get('explanation')).trim() };
+      try { await api('CreateQuizQuestion', input); showNotice('Question ajoutée.'); await renderQuiz(); } catch (error) { showNotice(errorMessage(error), 'error'); }
+    });
+    document.querySelectorAll('[data-delete-quiz]').forEach((button) => button.addEventListener('click', async () => {
+      if (!window.confirm('Supprimer cette question ?')) return;
+      try { await api('DeleteQuizQuestion', Number(button.dataset.deleteQuiz)); showNotice('Question supprimée.'); await renderQuiz(); } catch (error) { showNotice(errorMessage(error), 'error'); }
+    }));
+    document.querySelectorAll('[data-edit-quiz]').forEach((button) => button.addEventListener('click', async () => {
+      const question = questions.find((item) => Number(item.id) === Number(button.dataset.editQuiz));
+      if (!question) return;
+      const text = window.prompt('Énoncé :', question.question); if (text === null) return;
+      const theme = window.prompt('Thème :', question.theme); if (theme === null) return;
+      const choicesText = window.prompt('Choix, séparés par des virgules :', question.choices.join(', ')); if (choicesText === null) return;
+      const choices = choicesText.split(',').map((item) => item.trim()).filter(Boolean);
+      const correctAnswer = Number(window.prompt('Numéro de la bonne réponse :', String(question.correctAnswer + 1))) - 1;
+      const explanation = window.prompt('Explication (facultative) :', question.explanation); if (explanation === null) return;
+      try { await api('UpdateQuizQuestion', question.id, { question: text.trim(), theme: theme.trim(), choices, correctAnswer, explanation: explanation.trim() }); showNotice('Question modifiée.'); await renderQuiz(); } catch (error) { showNotice(errorMessage(error), 'error'); }
+    }));
+    if (!daily || daily.completed) return;
+    const finish = async (expired) => {
+      if (ui.quizTimer) { window.clearInterval(ui.quizTimer); ui.quizTimer = null; }
+      const answers = daily.questions.map((_, index) => {
+        const selected = document.querySelector(`input[name="quiz-${index}"]:checked`);
+        return selected ? Number(selected.value) : -1;
+      });
+      try { await api('SubmitDailyQuiz', answers, expired); await renderQuiz(); } catch (error) { showNotice(errorMessage(error), 'error'); }
+    };
+    document.querySelector('#daily-quiz-form').addEventListener('submit', (event) => { event.preventDefault(); finish(false); });
+    const started = new Date(daily.startedAt).getTime();
+    const tick = () => {
+      const remaining = Math.max(0, 120 - Math.floor((Date.now() - started) / 1000));
+      const timer = document.querySelector('#quiz-timer');
+      if (timer) timer.textContent = formatQuizTime(remaining);
+      if (remaining === 0) finish(true);
+    };
+    tick();
+    ui.quizTimer = window.setInterval(tick, 250);
 }
 
 async function renderMatieres() {

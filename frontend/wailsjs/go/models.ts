@@ -68,6 +68,121 @@ export namespace application {
 		    return a;
 		}
 	}
+	export class QuizCorrection {
+	    questionId: number;
+	    answer: number;
+	    correctAnswer: number;
+	    correct: boolean;
+	    explanation?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QuizCorrection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.questionId = source["questionId"];
+	        this.answer = source["answer"];
+	        this.correctAnswer = source["correctAnswer"];
+	        this.correct = source["correct"];
+	        this.explanation = source["explanation"];
+	    }
+	}
+	export class QuizResult {
+	    score: number;
+	    total: number;
+	    expired: boolean;
+	    corrections: QuizCorrection[];
+	
+	    static createFrom(source: any = {}) {
+	        return new QuizResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.score = source["score"];
+	        this.total = source["total"];
+	        this.expired = source["expired"];
+	        this.corrections = this.convertValues(source["corrections"], QuizCorrection);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class DailyQuizQuestion {
+	    id: number;
+	    question: string;
+	    choices: string[];
+	    theme: string;
+	    explanation?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DailyQuizQuestion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.question = source["question"];
+	        this.choices = source["choices"];
+	        this.theme = source["theme"];
+	        this.explanation = source["explanation"];
+	    }
+	}
+	export class DailyQuiz {
+	    date: string;
+	    questions: DailyQuizQuestion[];
+	    startedAt: string;
+	    completed: boolean;
+	    result?: QuizResult;
+	
+	    static createFrom(source: any = {}) {
+	        return new DailyQuiz(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.questions = this.convertValues(source["questions"], DailyQuizQuestion);
+	        this.startedAt = source["startedAt"];
+	        this.completed = source["completed"];
+	        this.result = this.convertValues(source["result"], QuizResult);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class TodayTask {
 	    id: number;
 	    subject: string;
@@ -465,6 +580,102 @@ export namespace application {
 	        this.startTime = source["startTime"];
 	        this.endTime = source["endTime"];
 	        this.notes = source["notes"];
+	    }
+	}
+	
+	
+	export class QuizHistoryEntry {
+	    date: string;
+	    score: number;
+	    total: number;
+	    expired: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new QuizHistoryEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.date = source["date"];
+	        this.score = source["score"];
+	        this.total = source["total"];
+	        this.expired = source["expired"];
+	    }
+	}
+	export class QuizProgress {
+	    streak: number;
+	    totalScore: number;
+	    history: QuizHistoryEntry[];
+	
+	    static createFrom(source: any = {}) {
+	        return new QuizProgress(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.streak = source["streak"];
+	        this.totalScore = source["totalScore"];
+	        this.history = this.convertValues(source["history"], QuizHistoryEntry);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class QuizQuestion {
+	    id: number;
+	    question: string;
+	    choices: string[];
+	    correctAnswer: number;
+	    theme: string;
+	    explanation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QuizQuestion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.question = source["question"];
+	        this.choices = source["choices"];
+	        this.correctAnswer = source["correctAnswer"];
+	        this.theme = source["theme"];
+	        this.explanation = source["explanation"];
+	    }
+	}
+	export class QuizQuestionInput {
+	    question: string;
+	    choices: string[];
+	    correctAnswer: number;
+	    theme: string;
+	    explanation: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new QuizQuestionInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.question = source["question"];
+	        this.choices = source["choices"];
+	        this.correctAnswer = source["correctAnswer"];
+	        this.theme = source["theme"];
+	        this.explanation = source["explanation"];
 	    }
 	}
 	

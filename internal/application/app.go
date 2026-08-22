@@ -154,6 +154,7 @@ var migrations = []migration{
 	{version: 3, apply: migrateMatieres},
 	{version: 4, apply: migratePlanning},
 	{version: 5, apply: migratePlanningSubjectColors},
+	{version: 6, apply: migrateQuiz},
 }
 
 func migrateInitialSchema(tx *sql.Tx) error {

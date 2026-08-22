@@ -14,6 +14,10 @@ export function CreatePlanningTask(arg1) {
   return window['go']['main']['App']['CreatePlanningTask'](arg1);
 }
 
+export function CreateQuizQuestion(arg1) {
+  return window['go']['main']['App']['CreateQuizQuestion'](arg1);
+}
+
 export function CreateSubjectWork(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateSubjectWork'](arg1, arg2, arg3);
 }
@@ -34,6 +38,10 @@ export function DeletePlanningTask(arg1) {
   return window['go']['main']['App']['DeletePlanningTask'](arg1);
 }
 
+export function DeleteQuizQuestion(arg1) {
+  return window['go']['main']['App']['DeleteQuizQuestion'](arg1);
+}
+
 export function DeleteSubjectWork(arg1) {
   return window['go']['main']['App']['DeleteSubjectWork'](arg1);
 }
@@ -46,12 +54,20 @@ export function GeneratePlanning(arg1) {
   return window['go']['main']['App']['GeneratePlanning'](arg1);
 }
 
+export function GetDailyQuiz() {
+  return window['go']['main']['App']['GetDailyQuiz']();
+}
+
 export function GetDashboard() {
   return window['go']['main']['App']['GetDashboard']();
 }
 
 export function GetMatiereDetail(arg1) {
   return window['go']['main']['App']['GetMatiereDetail'](arg1);
+}
+
+export function GetQuizProgress() {
+  return window['go']['main']['App']['GetQuizProgress']();
 }
 
 export function GetWorkdayPreferences() {
@@ -80,6 +96,10 @@ export function ListPlanningData() {
 
 export function ListPlanningTasks(arg1, arg2) {
   return window['go']['main']['App']['ListPlanningTasks'](arg1, arg2);
+}
+
+export function ListQuizQuestions() {
+  return window['go']['main']['App']['ListQuizQuestions']();
 }
 
 export function MoveAttachment(arg1, arg2) {
@@ -122,6 +142,10 @@ export function Startup(arg1) {
   return window['go']['main']['App']['Startup'](arg1);
 }
 
+export function SubmitDailyQuiz(arg1, arg2) {
+  return window['go']['main']['App']['SubmitDailyQuiz'](arg1, arg2);
+}
+
 export function ToggleTodayTask(arg1, arg2) {
   return window['go']['main']['App']['ToggleTodayTask'](arg1, arg2);
 }
@@ -132,4 +156,8 @@ export function UpdateChapter(arg1, arg2, arg3) {
 
 export function UpdatePlanningTask(arg1, arg2) {
   return window['go']['main']['App']['UpdatePlanningTask'](arg1, arg2);
+}
+
+export function UpdateQuizQuestion(arg1, arg2) {
+  return window['go']['main']['App']['UpdateQuizQuestion'](arg1, arg2);
 }
