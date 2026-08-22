@@ -78,6 +78,10 @@ export function SetSubjectWorkCompleted(arg1, arg2) {
   return window['go']['main']['App']['SetSubjectWorkCompleted'](arg1, arg2);
 }
 
+export function Startup(arg1) {
+  return window['go']['main']['App']['Startup'](arg1);
+}
+
 export function ToggleTodayTask(arg1, arg2) {
   return window['go']['main']['App']['ToggleTodayTask'](arg1, arg2);
 }

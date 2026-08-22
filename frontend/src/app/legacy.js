@@ -1,7 +1,4 @@
-import './style.css';
-import './app.css';
-
-import { GetDashboard, ToggleTodayTask } from '../wailsjs/go/main/App';
+import { GetDashboard, ToggleTodayTask } from '../../wailsjs/go/main/App';
 
 const app = document.querySelector('#app');
 const api = (name, ...args) => window.go.main.App[name](...args);
