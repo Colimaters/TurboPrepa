@@ -7,6 +7,8 @@ export function CreateChapter(arg1:number,arg2:string,arg3:string,arg4:string):P
 
 export function CreateMatiere(arg1:string,arg2:string):Promise<application.MatiereSummary>;
 
+export function CreatePlanningTask(arg1:application.PlanningTaskInput):Promise<application.PlanningTask>;
+
 export function CreateSubjectWork(arg1:number,arg2:string,arg3:string):Promise<application.SubjectWork>;
 
 export function DeleteAttachment(arg1:number):Promise<void>;
@@ -15,25 +17,43 @@ export function DeleteChapter(arg1:number):Promise<void>;
 
 export function DeleteMatiere(arg1:number):Promise<void>;
 
+export function DeletePlanningTask(arg1:number):Promise<void>;
+
 export function DeleteSubjectWork(arg1:number):Promise<void>;
+
+export function DownloadPlanningTemplate():Promise<void>;
+
+export function GeneratePlanning(arg1:application.GeneratePlanningInput):Promise<Array<application.PlanningTask>>;
 
 export function GetDashboard():Promise<application.Dashboard>;
 
 export function GetMatiereDetail(arg1:number):Promise<application.MatiereDetail>;
 
+export function GetWorkdayPreferences():Promise<application.WorkdayPreferences>;
+
 export function ImportChapterFiles(arg1:number,arg2:Array<string>):Promise<application.ImportResult>;
+
+export function ImportPlanningTemplate():Promise<application.ImportResult>;
 
 export function ListMatieres():Promise<Array<application.MatiereSummary>>;
 
 export function ListPastelColors():Promise<Array<string>>;
 
+export function ListPlanningData():Promise<application.PlanningData>;
+
+export function ListPlanningTasks(arg1:string,arg2:string):Promise<Array<application.PlanningTask>>;
+
 export function MoveAttachment(arg1:number,arg2:number):Promise<void>;
+
+export function MovePlanningTask(arg1:number,arg2:string,arg3:string,arg4:string):Promise<application.PlanningTask>;
 
 export function OpenAttachment(arg1:number):Promise<void>;
 
 export function RenameAttachment(arg1:number,arg2:string):Promise<void>;
 
 export function RenameMatiere(arg1:number,arg2:string):Promise<void>;
+
+export function SaveWorkdayPreferences(arg1:application.WorkdayPreferences):Promise<void>;
 
 export function SelectAndImportChapterFiles(arg1:number):Promise<application.ImportResult>;
 
@@ -46,3 +66,5 @@ export function Startup(arg1:context.Context):Promise<void>;
 export function ToggleTodayTask(arg1:number,arg2:boolean):Promise<void>;
 
 export function UpdateChapter(arg1:number,arg2:string,arg3:string):Promise<void>;
+
+export function UpdatePlanningTask(arg1:number,arg2:application.PlanningTaskInput):Promise<application.PlanningTask>;

@@ -152,6 +152,8 @@ var migrations = []migration{
 	{version: 1, apply: migrateInitialSchema},
 	{version: 2, apply: migratePlanningTaskDetails},
 	{version: 3, apply: migrateMatieres},
+	{version: 4, apply: migratePlanning},
+	{version: 5, apply: migratePlanningSubjectColors},
 }
 
 func migrateInitialSchema(tx *sql.Tx) error {
@@ -199,6 +201,11 @@ func migratePlanningTaskDetails(tx *sql.Tx) error {
 		return err
 	}
 	return nil
+}
+
+func migratePlanningSubjectColors(tx *sql.Tx) error {
+	_, err := tx.Exec(`ALTER TABLE taches_planning DROP COLUMN couleur`)
+	return err
 }
 
 func (a *App) loadQuotes() error {
@@ -261,7 +268,7 @@ func (a *App) GetDashboard() (Dashboard, error) {
 	}
 
 	taskRows, err := a.db.Query(`
-		SELECT t.id, COALESCE(m.nom, 'Sans matière'), COALESCE(t.couleur, m.couleur, '#D4D4D4'),
+		SELECT t.id, COALESCE(m.nom, 'Sans matière'), COALESCE(m.couleur, '#D4D4D4'),
 		       t.titre, t.heure_debut, t.heure_fin, t.terminee
 		FROM taches_planning t
 		LEFT JOIN matieres m ON m.id = t.matiere_id

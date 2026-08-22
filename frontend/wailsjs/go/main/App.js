@@ -10,6 +10,10 @@ export function CreateMatiere(arg1, arg2) {
   return window['go']['main']['App']['CreateMatiere'](arg1, arg2);
 }
 
+export function CreatePlanningTask(arg1) {
+  return window['go']['main']['App']['CreatePlanningTask'](arg1);
+}
+
 export function CreateSubjectWork(arg1, arg2, arg3) {
   return window['go']['main']['App']['CreateSubjectWork'](arg1, arg2, arg3);
 }
@@ -26,8 +30,20 @@ export function DeleteMatiere(arg1) {
   return window['go']['main']['App']['DeleteMatiere'](arg1);
 }
 
+export function DeletePlanningTask(arg1) {
+  return window['go']['main']['App']['DeletePlanningTask'](arg1);
+}
+
 export function DeleteSubjectWork(arg1) {
   return window['go']['main']['App']['DeleteSubjectWork'](arg1);
+}
+
+export function DownloadPlanningTemplate() {
+  return window['go']['main']['App']['DownloadPlanningTemplate']();
+}
+
+export function GeneratePlanning(arg1) {
+  return window['go']['main']['App']['GeneratePlanning'](arg1);
 }
 
 export function GetDashboard() {
@@ -38,8 +54,16 @@ export function GetMatiereDetail(arg1) {
   return window['go']['main']['App']['GetMatiereDetail'](arg1);
 }
 
+export function GetWorkdayPreferences() {
+  return window['go']['main']['App']['GetWorkdayPreferences']();
+}
+
 export function ImportChapterFiles(arg1, arg2) {
   return window['go']['main']['App']['ImportChapterFiles'](arg1, arg2);
+}
+
+export function ImportPlanningTemplate() {
+  return window['go']['main']['App']['ImportPlanningTemplate']();
 }
 
 export function ListMatieres() {
@@ -50,8 +74,20 @@ export function ListPastelColors() {
   return window['go']['main']['App']['ListPastelColors']();
 }
 
+export function ListPlanningData() {
+  return window['go']['main']['App']['ListPlanningData']();
+}
+
+export function ListPlanningTasks(arg1, arg2) {
+  return window['go']['main']['App']['ListPlanningTasks'](arg1, arg2);
+}
+
 export function MoveAttachment(arg1, arg2) {
   return window['go']['main']['App']['MoveAttachment'](arg1, arg2);
+}
+
+export function MovePlanningTask(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['MovePlanningTask'](arg1, arg2, arg3, arg4);
 }
 
 export function OpenAttachment(arg1) {
@@ -64,6 +100,10 @@ export function RenameAttachment(arg1, arg2) {
 
 export function RenameMatiere(arg1, arg2) {
   return window['go']['main']['App']['RenameMatiere'](arg1, arg2);
+}
+
+export function SaveWorkdayPreferences(arg1) {
+  return window['go']['main']['App']['SaveWorkdayPreferences'](arg1);
 }
 
 export function SelectAndImportChapterFiles(arg1) {
@@ -88,4 +128,8 @@ export function ToggleTodayTask(arg1, arg2) {
 
 export function UpdateChapter(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateChapter'](arg1, arg2, arg3);
+}
+
+export function UpdatePlanningTask(arg1, arg2) {
+  return window['go']['main']['App']['UpdatePlanningTask'](arg1, arg2);
 }
