@@ -56,20 +56,6 @@ type Dashboard struct {
 //go:embed assets/citations.json
 var quotesJSON []byte
 
-var defaultSubjects = []string{
-	"Droit pénal général", "Droit pénal spécial", "Procédure pénale", "Droit européen",
-	"Droit constitutionnel", "Droit administratif", "Droit de la fonction publique",
-	"Libertés publiques", "Anglais", "Dictée", "Culture générale",
-	"Connaissance du monde contemporain", "Connaissance de l'institution policière",
-	"Note de synthèse", "Cas pratique", "Annales", "Sport", "Lecture",
-}
-
-var pastelColors = []string{
-	"#BFD7ED", "#C9C5EB", "#C8E6D1", "#F8D7B5", "#F5C6D6", "#D7E5C6",
-	"#F4D6A5", "#BFE3E0", "#D8C3E8", "#F6CBC1", "#CCE0F4", "#D4D4D4",
-	"#E7D7B8", "#C6D9D1", "#E2C9D4",
-}
-
 func NewApp() *App {
 	return &App{now: time.Now}
 }
@@ -165,6 +151,7 @@ type migration struct {
 var migrations = []migration{
 	{version: 1, apply: migrateInitialSchema},
 	{version: 2, apply: migratePlanningTaskDetails},
+	{version: 3, apply: migrateMatieres},
 }
 
 func migrateInitialSchema(tx *sql.Tx) error {
@@ -186,14 +173,20 @@ func migrateInitialSchema(tx *sql.Tx) error {
 	`); err != nil {
 		return err
 	}
-	for index, subject := range defaultSubjects {
-		if _, err := tx.Exec(
-			`INSERT INTO matieres(nom, couleur, ordre)
-			 SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM matieres WHERE nom = ?)`,
-			subject, pastelColors[index%len(pastelColors)], index, subject,
-		); err != nil {
-			return fmt.Errorf("initialisation des matières : %w", err)
-		}
+	if _, err := tx.Exec(`
+		INSERT INTO matieres(nom, couleur, ordre)
+		VALUES
+			('Droit pénal général', '#BFD7ED', 0), ('Droit pénal spécial', '#C9C5EB', 1),
+			('Procédure pénale', '#C8E6D1', 2), ('Droit européen', '#F8D7B5', 3),
+			('Droit constitutionnel', '#F5C6D6', 4), ('Droit administratif', '#D7E5C6', 5),
+			('Droit de la fonction publique', '#F4D6A5', 6), ('Libertés publiques', '#BFE3E0', 7),
+			('Anglais', '#D8C3E8', 8), ('Dictée', '#F6CBC1', 9),
+			('Culture générale', '#CCE0F4', 10), ('Connaissance du monde contemporain', '#D4D4D4', 11),
+			('Connaissance de l''institution policière', '#E7D7B8', 12), ('Note de synthèse', '#C6D9D1', 13),
+			('Cas pratique', '#E2C9D4', 14), ('Annales', '#BFD7ED', 15),
+			('Sport', '#C9C5EB', 16), ('Lecture', '#C8E6D1', 17)
+		ON CONFLICT DO NOTHING`); err != nil {
+		return fmt.Errorf("initialisation des matières : %w", err)
 	}
 	return nil
 }
@@ -240,6 +233,7 @@ func (a *App) GetDashboard() (Dashboard, error) {
 
 	rows, err := a.db.Query(`
 		SELECT statut, COUNT(*) FROM chapitres
+		WHERE sous_onglet = 'programme'
 		GROUP BY statut`)
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("lecture de la progression : %w", err)

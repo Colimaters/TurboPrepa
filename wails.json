@@ -1,13 +1,49 @@
 {
-  "$schema": "https://wails.io/schemas/config.v2.json",
   "name": "TurboPrepa",
-  "outputfilename": "TurboPrepa",
-  "frontend:install": "npm install",
   "frontend:build": "npm run build",
+  "frontend:install": "npm install",
+  "frontend:dev": "",
+  "frontend:dev:build": "",
+  "frontend:dev:install": "",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
-  "author": {
-    "name": "",
-    "email": ""
+  "wailsjsdir": "/home/ape/TurboPrepa/frontend",
+  "version": "2",
+  "projectdir": "/home/ape/TurboPrepa",
+  "build:dir": "build",
+  "build:tags": "webkit2_41",
+  "outputfilename": "TurboPrepa",
+  "OutputType": "",
+  "Platform": "",
+  "runNonNativeBuildHooks": false,
+  "postBuildHooks": null,
+  "preBuildHooks": null,
+  "Author": {
+    "name": "Colimaters",
+    "email": "dmorel-pro@proton.ch"
+  },
+  "Info": {
+    "companyName": "Colimaters",
+    "productName": "TurboPrepa",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright Mimi",
+    "comments": "Built for chaton",
+    "fileAssociations": null,
+    "protocols": null
+  },
+  "debounceMS": 100,
+  "devServer": "localhost:34115",
+  "appargs": "",
+  "nsisType": "multiple",
+  "obfuscated": false,
+  "garbleargs": "",
+  "frontend:dir": "frontend",
+  "viteServerTimeout": 10,
+  "bindings": {
+    "ts_generation": {
+      "prefix": "",
+      "suffix": "",
+      "outputType": ""
+    }
   }
 }

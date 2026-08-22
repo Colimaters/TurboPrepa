@@ -1,7 +1,9 @@
 package main
 
 import (
+	"archive/zip"
 	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -16,11 +18,129 @@ func newTestApp(t *testing.T, now time.Time) *App {
 	if err := app.loadQuotes(); err != nil {
 		t.Fatalf("loadQuotes() error = %v", err)
 	}
+
 	if err := app.openDatabase(); err != nil {
 		t.Fatalf("openDatabase() error = %v", err)
 	}
 	t.Cleanup(func() { app.db.Close() })
 	return app
+}
+
+func TestMatieresPersistContentAndAttachments(t *testing.T) {
+	app := newTestApp(t, time.Date(2026, time.August, 16, 9, 0, 0, 0, time.Local))
+
+	colors, err := app.ListPastelColors()
+	if err != nil {
+		t.Fatalf("ListPastelColors() error = %v", err)
+	}
+	if len(colors) != 15 {
+		t.Fatalf("palette has %d colors, want 15", len(colors))
+	}
+	subject, err := app.CreateMatiere("Matière de test", colors[0])
+	if err != nil {
+		t.Fatalf("CreateMatiere() error = %v", err)
+	}
+	program, err := app.CreateChapter(subject.ID, tabProgramme, "Chapitre 1", "")
+	if err != nil {
+		t.Fatalf("CreateChapter(programme) error = %v", err)
+	}
+	folder, err := app.CreateChapter(subject.ID, tabFiches, "Fiches à revoir", "Texte de fiche")
+	if err != nil {
+		t.Fatalf("CreateChapter(fiches) error = %v", err)
+	}
+	if err := app.SetChapterStatus(program.ID, "maitrise"); err != nil {
+		t.Fatalf("SetChapterStatus() error = %v", err)
+	}
+	work, err := app.CreateSubjectWork(subject.ID, "Relire le chapitre", "2026-08-20")
+	if err != nil {
+		t.Fatalf("CreateSubjectWork() error = %v", err)
+	}
+	if err := app.SetSubjectWorkCompleted(work.ID, true); err != nil {
+		t.Fatalf("SetSubjectWorkCompleted() error = %v", err)
+	}
+
+	sourcePath := filepath.Join(t.TempDir(), "support.xlsx")
+	if err := os.WriteFile(sourcePath, []byte("contenu"), 0o600); err != nil {
+		t.Fatalf("write source attachment: %v", err)
+	}
+	result, err := app.ImportChapterFiles(folder.ID, []string{sourcePath})
+	if err != nil {
+		t.Fatalf("ImportChapterFiles() error = %v", err)
+	}
+	if len(result.Imported) != 1 || result.Imported[0].MimeType == "" {
+		t.Fatalf("import result = %#v, want one attachment with a MIME type", result)
+	}
+	archivePath := filepath.Join(t.TempDir(), "documents.zip")
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatalf("create ZIP: %v", err)
+	}
+	archive := zip.NewWriter(archiveFile)
+	for name := range map[string]bool{"fiche.docx": true, "ignore.txt": true} {
+		entry, err := archive.Create(name)
+		if err != nil {
+			t.Fatalf("create ZIP entry: %v", err)
+		}
+		if _, err := entry.Write([]byte("contenu")); err != nil {
+			t.Fatalf("write ZIP entry: %v", err)
+		}
+	}
+	if err := archive.Close(); err != nil {
+		t.Fatalf("close ZIP: %v", err)
+	}
+	if err := archiveFile.Close(); err != nil {
+		t.Fatalf("close ZIP file: %v", err)
+	}
+	zipResult, err := app.ImportChapterFiles(folder.ID, []string{archivePath})
+	if err != nil {
+		t.Fatalf("ImportChapterFiles(ZIP) error = %v", err)
+	}
+	if len(zipResult.Imported) != 1 || len(zipResult.Skipped) != 1 || zipResult.Skipped[0] != "ignore.txt" {
+		t.Fatalf("ZIP result = %#v, want one imported file and ignore.txt skipped", zipResult)
+	}
+	var storedPath string
+	if err := app.db.QueryRow(`SELECT chemin_disque FROM fichiers WHERE id = ?`, result.Imported[0].ID).Scan(&storedPath); err != nil {
+		t.Fatalf("read attachment path: %v", err)
+	}
+	if _, err := os.Stat(storedPath); err != nil {
+		t.Fatalf("stored attachment does not exist: %v", err)
+	}
+	if err := app.MoveAttachment(result.Imported[0].ID, folder.ID); err != nil {
+		t.Fatalf("MoveAttachment() error = %v", err)
+	}
+
+	detail, err := app.GetMatiereDetail(subject.ID)
+	if err != nil {
+		t.Fatalf("GetMatiereDetail() error = %v", err)
+	}
+	if detail.Subject.Mastered != 1 || detail.Subject.Chapters != 1 {
+		t.Errorf("progress = %#v, want one mastered program chapter", detail.Subject)
+	}
+	if len(detail.Works) != 1 || !detail.Works[0].Completed {
+		t.Errorf("works = %#v, want one completed work", detail.Works)
+	}
+	dashboard, err := app.GetDashboard()
+	if err != nil {
+		t.Fatalf("GetDashboard() error = %v", err)
+	}
+	if dashboard.Progress != (Progress{Mastered: 1}) {
+		t.Errorf("dashboard progress = %#v, want only the program chapter", dashboard.Progress)
+	}
+	var persistedFolder *Chapter
+	for index := range detail.Chapters {
+		if detail.Chapters[index].ID == folder.ID {
+			persistedFolder = &detail.Chapters[index]
+		}
+	}
+	if len(detail.Chapters) != 2 || persistedFolder == nil || persistedFolder.Content != "Texte de fiche" || len(persistedFolder.Files) != 2 {
+		t.Errorf("chapters = %#v, want persisted folders, content, and attachment", detail.Chapters)
+	}
+	if err := app.DeleteMatiere(subject.ID); err != nil {
+		t.Fatalf("DeleteMatiere() error = %v", err)
+	}
+	if _, err := os.Stat(storedPath); !os.IsNotExist(err) {
+		t.Errorf("stored attachment still exists after parent deletion, stat error = %v", err)
+	}
 }
 
 func TestMigrationsAreIdempotentAndSeedSubjects(t *testing.T) {
@@ -40,8 +160,8 @@ func TestMigrationsAreIdempotentAndSeedSubjects(t *testing.T) {
 	if err := app.db.QueryRow(`PRAGMA foreign_keys`).Scan(&foreignKeys); err != nil {
 		t.Fatalf("read foreign_keys: %v", err)
 	}
-	if subjectCount != len(defaultSubjects) {
-		t.Errorf("subject count = %d, want %d", subjectCount, len(defaultSubjects))
+	if subjectCount != 18 {
+		t.Errorf("subject count = %d, want 18", subjectCount)
 	}
 	if migrationCount != len(migrations) {
 		t.Errorf("migration count = %d, want %d", migrationCount, len(migrations))
@@ -77,7 +197,7 @@ func TestDashboardUsesSharedDataAndRotatesQuotes(t *testing.T) {
 	app := newTestApp(t, now)
 
 	var subjectID int64
-	if err := app.db.QueryRow(`SELECT id FROM matieres WHERE nom = ?`, defaultSubjects[0]).Scan(&subjectID); err != nil {
+	if err := app.db.QueryRow(`SELECT id FROM matieres WHERE nom = ?`, "Droit pénal général").Scan(&subjectID); err != nil {
 		t.Fatalf("find seeded subject: %v", err)
 	}
 	for _, status := range []string{"a_planifier", "planifie", "en_cours", "maitrise"} {
